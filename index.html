@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UNIQLOCK - Recreation</title>
+  <meta name="description" content="Iconic UNIQLOCK web clock recreation with 5s color inversion sweeps and dance video clips.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div id="app-viewport">
+
+    <!-- Base Clock Layer (State A) -->
+    <div id="base-layer" class="clock-layer theme-pink-on-white">
+      <div class="clock-content">
+        <div id="base-time" class="time-display">
+          <span id="base-hh" class="time-pair">00</span>
+          <span id="base-mm" class="time-pair">00</span>
+          <span id="base-ss" class="time-pair">00</span>
+        </div>
+        <div id="base-location" class="location-display">TOKYO / JAPAN</div>
+      </div>
+    </div>
+
+    <!-- Overlay Clock Layer (State B for Color Inversion Sweeps) -->
+    <div id="overlay-layer" class="clock-layer theme-white-on-pink">
+      <div class="clock-content">
+        <div id="overlay-time" class="time-display">
+          <span id="overlay-hh" class="time-pair">00</span>
+          <span id="overlay-mm" class="time-pair">00</span>
+          <span id="overlay-ss" class="time-pair">00</span>
+        </div>
+        <div id="overlay-location" class="location-display">TOKYO / JAPAN</div>
+      </div>
+    </div>
+
+    <!-- Sweep Bar (Edge highlight of wiping transition) -->
+    <div id="sweep-bar"></div>
+
+    <!-- Video Stage Layer (5s Dance Clips) -->
+    <div id="video-stage">
+      <video id="video-player" playsinline webkit-playsinline preload="auto"></video>
+    </div>
+
+    <!-- Control HUD Overlay (Hidden by default, reveals on hover) -->
+    <div id="hud-overlay">
+      <span id="phase-pill">CLOCK MODE</span>
+      <select id="city-select" class="hud-select" aria-label="Select City"></select>
+      <select id="track-select" class="hud-select" aria-label="Select Track"></select>
+      <button id="mute-btn" class="hud-btn">🔊 Sound On</button>
+      <button id="fullscreen-btn" class="hud-btn">⛶ Fullscreen</button>
+      <button id="debug-btn" class="hud-btn">🐞 Debug [D]</button>
+    </div>
+
+    <!-- Debug Monitor Overlay Panel -->
+    <div id="debug-panel" class="debug-panel hidden">
+      <div class="debug-header">
+        <span>UNIQLOCK DEBUG MONITOR</span>
+        <span id="debug-close-btn" style="cursor:pointer; padding:0 4px;">&times;</span>
+      </div>
+      <div class="debug-grid">
+        <div class="debug-item"><span class="debug-label">PHASE:</span> <span id="dbg-phase">-</span></div>
+        <div class="debug-item"><span class="debug-label">TIME (UTC):</span> <span id="dbg-utc">-</span></div>
+        <div class="debug-item"><span class="debug-label">CITY / TZ:</span> <span id="dbg-city">-</span></div>
+        <div class="debug-item"><span class="debug-label">TRACK:</span> <span id="dbg-track">-</span></div>
+        <div class="debug-item"><span class="debug-label">AUDIO SEC:</span> <span id="dbg-audio-sec">-</span></div>
+        <div class="debug-item"><span class="debug-label">PRELOAD AUDIO:</span> <span id="dbg-preload-audio">-</span></div>
+        <div class="debug-item"><span class="debug-label">VIDEO CLIP:</span> <span id="dbg-video">-</span></div>
+        <div class="debug-item"><span class="debug-label">PRELOAD VIDEO:</span> <span id="dbg-preload-video">-</span></div>
+        <div class="debug-item"><span class="debug-label">THEME COLOR:</span> <span id="dbg-color">-</span></div>
+        <div class="debug-item"><span class="debug-label">SWEEP DIR:</span> <span id="dbg-sweep-dir">-</span></div>
+      </div>
+
+      <!-- Time Travel / Simulation Controls -->
+      <div style="margin-top:10px; border-top:1px dashed rgba(255,255,255,0.2); padding-top:8px;">
+        <div style="font-weight:bold; color:#fff; margin-bottom:6px; font-size:0.75rem;">⏰ SIMULATE TIME (TRAVEL):</div>
+        <div style="display:flex; gap:4px; align-items:center; margin-bottom:8px;">
+          <input type="number" id="dbg-sim-h" min="0" max="23" placeholder="HH" style="width:44px; background:#111; color:#00e5a3; border:1px solid #333; border-radius:4px; padding:4px; font-family:monospace; font-size:0.75rem;">
+          <span>:</span>
+          <input type="number" id="dbg-sim-m" min="0" max="59" placeholder="MM" style="width:44px; background:#111; color:#00e5a3; border:1px solid #333; border-radius:4px; padding:4px; font-family:monospace; font-size:0.75rem;">
+          <span>:</span>
+          <input type="number" id="dbg-sim-s" min="0" max="59" placeholder="SS" style="width:44px; background:#111; color:#00e5a3; border:1px solid #333; border-radius:4px; padding:4px; font-family:monospace; font-size:0.75rem;">
+        <div style="display:flex; gap:4px; margin-top:6px;">
+          <button id="dbg-sim-bad-conn" style="flex:1; padding:6px; font-size:0.75rem; background:#ff9900; color:#000; font-weight:bold; border:none; border-radius:6px; cursor:pointer;">📡 SIMULAR MALA CONEXIÓN</button>
+          <button id="dbg-open-cartelera" style="flex:1; padding:6px; font-size:0.75rem; background:#00e5a3; color:#000; font-weight:bold; border:none; border-radius:6px; cursor:pointer;">📅 CARTELERA [G]</button>
+        </div>
+      </div>
+
+      <div class="debug-footer">Press [D] for Debug | Press [G] for Cartelera</div>
+    </div>
+
+    <!-- Cartelera & Program Guide Overlay Panel -->
+    <div id="cartelera-panel" class="cartelera-panel hidden">
+      <div class="cartelera-header">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span style="font-size:1.1rem; font-weight:800; color:#00e5a3;">📅 CARTELERA & PROGRAMACIÓN UNIQLOCK</span>
+        </div>
+        <span id="cartelera-close-btn" class="close-btn">&times;</span>
+      </div>
+
+      <div class="cartelera-search-bar">
+        <input type="text" id="cartelera-search-input" placeholder="🔍 Buscar canción (ej. Blow, Drum) o clip (ej. clip_042, hour_12)...">
+      </div>
+
+      <div class="cartelera-tabs">
+        <button id="tab-songs-btn" class="cartelera-tab active">🎵 Canciones (24 Tracks)</button>
+        <button id="tab-clips-btn" class="cartelera-tab">💃 Clips de Baile & Horas</button>
+      </div>
+
+      <div class="cartelera-content" id="cartelera-list">
+        <!-- Dynamic Schedule List Items populated by app.js -->
+      </div>
+    </div>
+
+    <!-- Mobile & Touch Action Buttons (Floating Panel for Mobile Phones & Tablets) -->
+    <div id="mobile-touch-bar">
+      <button id="touch-cartelera-btn" class="touch-fab-btn" title="Abrir Cartelera (G)">📅 Guía</button>
+      <button id="touch-debug-btn" class="touch-fab-btn" title="Abrir Debug (D)">🐞 Debug</button>
+      <button id="touch-mute-btn" class="touch-fab-btn" title="Silenciar / Activar Sonido">🔊</button>
+      <button id="touch-fs-btn" class="touch-fab-btn" title="Pantalla Completa">⛶</button>
+    </div>
+
+    <!-- Bad Connection / 1-Min Video Preloading Fullscreen Overlay -->
+    <div id="bad-connection-overlay" class="hidden">
+      <div class="bad-connection-box">
+        <div class="bad-connection-title">CONEXIÓN LENTA DETECTADA</div>
+        <div class="bad-connection-subtitle">Se ha pausado la reproducción debido a la mala red.<br>Precargando 1 minuto de vídeos para garantizar fluidez...</div>
+        <div class="bad-connection-progress-container">
+          <div id="bad-connection-bar"></div>
+        </div>
+        <div id="bad-connection-status">Cargando clips... 0%</div>
+      </div>
+    </div>
+
+    <!-- Initial Start / Audio Activation Splash Overlay -->
+    <div id="start-overlay">
+      <div class="start-box">
+        <div class="start-title">UNIQLOCK</div>
+        <div class="start-subtitle">CLICK TO START</div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
