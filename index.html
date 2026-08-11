@@ -81,44 +81,14 @@
           <input type="number" id="dbg-sim-m" min="0" max="59" placeholder="MM" style="width:44px; background:#111; color:#00e5a3; border:1px solid #333; border-radius:4px; padding:4px; font-family:monospace; font-size:0.75rem;">
           <span>:</span>
           <input type="number" id="dbg-sim-s" min="0" max="59" placeholder="SS" style="width:44px; background:#111; color:#00e5a3; border:1px solid #333; border-radius:4px; padding:4px; font-family:monospace; font-size:0.75rem;">
-        <div style="display:flex; gap:4px; margin-top:6px;">
-          <button id="dbg-sim-bad-conn" style="flex:1; padding:6px; font-size:0.75rem; background:#ff9900; color:#000; font-weight:bold; border:none; border-radius:6px; cursor:pointer;">📡 SIMULAR MALA CONEXIÓN</button>
-          <button id="dbg-open-cartelera" style="flex:1; padding:6px; font-size:0.75rem; background:#00e5a3; color:#000; font-weight:bold; border:none; border-radius:6px; cursor:pointer;">📅 CARTELERA [G]</button>
+          <button id="dbg-sim-apply" style="padding:4px 8px; font-size:0.75rem; background:#00a0e9; color:#fff; border:none; border-radius:4px; cursor:pointer;">Set</button>
+          <button id="dbg-sim-reset" style="padding:4px 8px; font-size:0.75rem; background:#e5006d; color:#fff; border:none; border-radius:4px; cursor:pointer;">Real</button>
         </div>
+        <button id="dbg-sim-bad-conn" style="width:100%; padding:6px; font-size:0.75rem; background:#ff9900; color:#000; font-weight:bold; border:none; border-radius:6px; cursor:pointer; margin-bottom:6px;">📡 SIMULAR MALA CONEXIÓN</button>
+        <a href="schedule.html" target="_blank" style="display:block; width:100%; text-align:center; padding:6px; font-size:0.75rem; background:#00a0e9; color:#fff; font-weight:bold; text-decoration:none; border-radius:6px;">📅 ABRIR CARTELERA COMPLETA</a>
       </div>
 
-      <div class="debug-footer">Press [D] for Debug | Press [G] for Cartelera</div>
-    </div>
-
-    <!-- Cartelera & Program Guide Overlay Panel -->
-    <div id="cartelera-panel" class="cartelera-panel hidden">
-      <div class="cartelera-header">
-        <div style="display:flex; align-items:center; gap:10px;">
-          <span style="font-size:1.1rem; font-weight:800; color:#00e5a3;">📅 CARTELERA & PROGRAMACIÓN UNIQLOCK</span>
-        </div>
-        <span id="cartelera-close-btn" class="close-btn">&times;</span>
-      </div>
-
-      <div class="cartelera-search-bar">
-        <input type="text" id="cartelera-search-input" placeholder="🔍 Buscar canción (ej. Blow, Drum) o clip (ej. clip_042, hour_12)...">
-      </div>
-
-      <div class="cartelera-tabs">
-        <button id="tab-songs-btn" class="cartelera-tab active">🎵 Canciones (24 Tracks)</button>
-        <button id="tab-clips-btn" class="cartelera-tab">💃 Clips de Baile & Horas</button>
-      </div>
-
-      <div class="cartelera-content" id="cartelera-list">
-        <!-- Dynamic Schedule List Items populated by app.js -->
-      </div>
-    </div>
-
-    <!-- Mobile & Touch Action Buttons (Floating Panel for Mobile Phones & Tablets) -->
-    <div id="mobile-touch-bar">
-      <button id="touch-cartelera-btn" class="touch-fab-btn" title="Abrir Cartelera (G)">📅 Guía</button>
-      <button id="touch-debug-btn" class="touch-fab-btn" title="Abrir Debug (D)">🐞 Debug</button>
-      <button id="touch-mute-btn" class="touch-fab-btn" title="Silenciar / Activar Sonido">🔊</button>
-      <button id="touch-fs-btn" class="touch-fab-btn" title="Pantalla Completa">⛶</button>
+      <div class="debug-footer">Press [D] to toggle debug overlay</div>
     </div>
 
     <!-- Bad Connection / 1-Min Video Preloading Fullscreen Overlay -->

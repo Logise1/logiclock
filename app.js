@@ -173,8 +173,23 @@ document.addEventListener('DOMContentLoaded', () => {
   currentCityIndex = autoDetectUserCity();
   citySelect.value = currentCityIndex;
 
-  // --- Time Travel Simulation Offset ---
+  // --- Time Travel Simulation Offset & URL Query Params ---
   let timeOffsetMs = 0;
+
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('simH')) {
+      const h = parseInt(urlParams.get('simH') || '0', 10);
+      const m = parseInt(urlParams.get('simM') || '0', 10);
+      const s = parseInt(urlParams.get('simS') || '0', 10);
+
+      const target = new Date();
+      target.setHours(h, m, s, 0);
+      timeOffsetMs = target.getTime() - Date.now();
+    }
+  } catch (e) {
+    console.log('URL param parse error:', e);
+  }
 
   function getEffectiveDate() {
     return new Date(Date.now() + timeOffsetMs);
@@ -904,227 +919,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Keyboard shortcut support (Space to toggle mute, F for fullscreen, D for Debug, G for Cartelera)
+  // Keyboard shortcut support (Space to toggle mute, F for fullscreen, D for Debug)
   document.addEventListener('keydown', (e) => {
-    if (e.target.tagName === 'INPUT') return;
     if (e.code === 'Space') {
       muteBtn.click();
     } else if (e.code === 'KeyF') {
       fsBtn.click();
     } else if (e.code === 'KeyD') {
       toggleDebugMode();
-    } else if (e.code === 'KeyG') {
-      toggleCartelera();
     }
   });
-
-  // --- Cartelera & Program Guide Engine ---
-  const carteleraPanel = document.getElementById('cartelera-panel');
-  const carteleraCloseBtn = document.getElementById('cartelera-close-btn');
-  const carteleraSearchInput = document.getElementById('cartelera-search-input');
-  const tabSongsBtn = document.getElementById('tab-songs-btn');
-  const tabClipsBtn = document.getElementById('tab-clips-btn');
-  const carteleraList = document.getElementById('cartelera-list');
-  const dbgOpenCartelera = document.getElementById('dbg-open-cartelera');
-
-  let activeCarteleraTab = 'SONGS';
-  let isCarteleraVisible = false;
-
-  function toggleCartelera() {
-    isCarteleraVisible = !isCarteleraVisible;
-    if (isCarteleraVisible) {
-      if (carteleraPanel) carteleraPanel.classList.remove('hidden');
-      renderCarteleraList();
-    } else {
-      if (carteleraPanel) carteleraPanel.classList.add('hidden');
-    }
-  }
-
-  function renderCarteleraList() {
-    if (!carteleraList) return;
-    const query = (carteleraSearchInput?.value || '').toLowerCase().trim();
-    carteleraList.innerHTML = '';
-
-    if (activeCarteleraTab === 'SONGS') {
-      AUDIO_FILES.forEach((file, idx) => {
-        const cleanName = file.replace(/^\d+\s*/, '').replace('.mp3', '');
-        if (query && !file.toLowerCase().includes(query) && !cleanName.toLowerCase().includes(query)) {
-          return;
-        }
-
-        const item = document.createElement('div');
-        item.className = 'cartelera-item';
-
-        let categoryBadge = '';
-        let scheduleInfo = '';
-        let targetHour = 12;
-        let targetMin = 0;
-
-        if (idx >= 0 && idx <= 13) {
-          categoryBadge = '<span class="cartelera-item-badge badge-day">CANCIÓN DE DÍA</span>';
-          const minOffsets = [idx + 1, idx + 15, idx + 29, idx + 43].filter(m => m < 60);
-          scheduleInfo = `Suena en horas de día (06:00 a 18:59) a los minutos: :${minOffsets.map(m => String(m).padStart(2, '0')).join(', :')}`;
-          targetHour = 14;
-          targetMin = minOffsets[0] || 1;
-        } else if (idx >= 14 && idx <= 18) {
-          categoryBadge = '<span class="cartelera-item-badge badge-night">CANCIÓN DE NOCHE</span>';
-          const offset = idx - 14;
-          const nightMins = [];
-          for (let m = 1 + offset; m < 60; m += 5) nightMins.push(m);
-          scheduleInfo = `Suena en horas de noche (19:00 a 05:59) a los minutos: :${nightMins.slice(0, 6).map(m => String(m).padStart(2, '0')).join(', :')}...`;
-          targetHour = 22;
-          targetMin = nightMins[0] || 1;
-        } else {
-          categoryBadge = '<span class="cartelera-item-badge badge-hour">HORA EN PUNTO (:00)</span>';
-          scheduleInfo = `Suena en el minuto :00:00 de la hora en punto`;
-          targetHour = 12;
-          targetMin = 0;
-        }
-
-        item.innerHTML = `
-          <div>
-            <div class="cartelera-item-title">
-              🎵 [${idx}] ${cleanName} ${categoryBadge}
-            </div>
-            <div class="cartelera-item-schedule">${scheduleInfo}</div>
-          </div>
-          <button class="cartelera-jump-btn" onclick="jumpToSimulatedTime(${targetHour}, ${targetMin}, 0)">▶ Reproducir Ahora</button>
-        `;
-        carteleraList.appendChild(item);
-      });
-    } else {
-      // Clips Tab (24 Special Hours + Dance Clips)
-      // 1. Render Special Hour Clips (hour_00 to hour_23)
-      for (let h = 0; h < 24; h++) {
-        const hourStr = String(h).padStart(2, '0');
-        const clipName = `hour_${hourStr}`;
-        if (query && !clipName.includes(query) && !`hora ${h}`.includes(query)) {
-          continue;
-        }
-
-        const item = document.createElement('div');
-        item.className = 'cartelera-item';
-        item.innerHTML = `
-          <div>
-            <div class="cartelera-item-title">
-              🎬 Vídeo Especial de la Hora ${hourStr}:00 <span class="cartelera-item-badge badge-hour">30S FANFARE</span>
-            </div>
-            <div class="cartelera-item-schedule">Se reproduce automáticamente de ${hourStr}:00:00 a ${hourStr}:00:30 (animación especial)</div>
-          </div>
-          <button class="cartelera-jump-btn" onclick="jumpToSimulatedTime(${h}, 0, 0)">▶ Ver Animación</button>
-        `;
-        carteleraList.appendChild(item);
-      }
-
-      // 2. Render Dance Clips sample (000 to 101)
-      for (let c = 0; c < TOTAL_CLIPS; c++) {
-        const clipStr = String(c).padStart(3, '0');
-        const clipName = `clip_${clipStr}`;
-        if (query && !clipName.includes(query) && !`baile ${c}`.includes(query)) {
-          continue;
-        }
-
-        // Find upcoming timestamp for clip
-        const effNow = getEffectiveDate().getTime();
-        let sampleHour = 14;
-        let sampleMin = 5;
-
-        for (let i = 0; i < 200; i++) {
-          const testTs = effNow + (i * 10000);
-          if (getSyncClipIndexForTimestamp(testTs) === c) {
-            const d = new Date(testTs);
-            sampleHour = d.getHours();
-            sampleMin = d.getMinutes();
-            break;
-          }
-        }
-
-        const item = document.createElement('div');
-        item.className = 'cartelera-item';
-        item.innerHTML = `
-          <div>
-            <div class="cartelera-item-title">
-              💃 Clip de Baile #${c} (${clipName}.mp4) <span class="cartelera-item-badge badge-day">5S DANCE</span>
-            </div>
-            <div class="cartelera-item-schedule">Clip de baile sincronizado mundialmente (próximo pase a las ${String(sampleHour).padStart(2, '0')}:${String(sampleMin).padStart(2, '0')})</div>
-          </div>
-          <button class="cartelera-jump-btn" onclick="jumpToSimulatedTime(${sampleHour}, ${sampleMin}, 5)">▶ Ver Clip</button>
-        `;
-        carteleraList.appendChild(item);
-      }
-    }
-
-    if (carteleraList.children.length === 0) {
-      carteleraList.innerHTML = `<div style="text-align:center; padding:30px; color:rgba(255,255,255,0.4);">No se encontraron resultados para "${query}"</div>`;
-    }
-  }
-
-  // Jump helper function accessible globally
-  window.jumpToSimulatedTime = function(h, m, s) {
-    const target = new Date();
-    target.setHours(h, m, s, 0);
-    timeOffsetMs = target.getTime() - Date.now();
-    reSyncAllSystems();
-    if (isCarteleraVisible) toggleCartelera();
-  };
-
-  if (carteleraCloseBtn) carteleraCloseBtn.addEventListener('click', toggleCartelera);
-  if (dbgOpenCartelera) dbgOpenCartelera.addEventListener('click', toggleCartelera);
-
-  if (tabSongsBtn) {
-    tabSongsBtn.addEventListener('click', () => {
-      activeCarteleraTab = 'SONGS';
-      tabSongsBtn.classList.add('active');
-      tabClipsBtn.classList.remove('active');
-      renderCarteleraList();
-    });
-  }
-
-  if (tabClipsBtn) {
-    tabClipsBtn.addEventListener('click', () => {
-      activeCarteleraTab = 'CLIPS';
-      tabClipsBtn.classList.add('active');
-      tabSongsBtn.classList.remove('active');
-      renderCarteleraList();
-    });
-  }
-
-  if (carteleraSearchInput) {
-    carteleraSearchInput.addEventListener('input', () => {
-      renderCarteleraList();
-    });
-  }
-
-  // --- Touch & Mobile Floating Control Buttons ---
-  const touchCarteleraBtn = document.getElementById('touch-cartelera-btn');
-  const touchDebugBtn = document.getElementById('touch-debug-btn');
-  const touchMuteBtn = document.getElementById('touch-mute-btn');
-  const touchFsBtn = document.getElementById('touch-fs-btn');
-
-  if (touchCarteleraBtn) touchCarteleraBtn.addEventListener('click', toggleCartelera);
-  if (touchDebugBtn) touchDebugBtn.addEventListener('click', toggleDebugMode);
-
-  if (touchMuteBtn) {
-    touchMuteBtn.addEventListener('click', () => {
-      isMuted = !isMuted;
-      audio.muted = isMuted;
-      videoPlayer.muted = isMuted;
-      touchMuteBtn.textContent = isMuted ? '🔇' : '🔊';
-      if (muteBtn) muteBtn.textContent = isMuted ? '🔇 Muted' : '🔊 Sound On';
-    });
-  }
-
-  if (touchFsBtn) {
-    touchFsBtn.addEventListener('click', () => {
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(err => console.log(err));
-      } else {
-        if (document.exitFullscreen) {
-          document.exitFullscreen();
-        }
-      }
-    });
-  }
 
   // Start loop!
   startClockLoop();
