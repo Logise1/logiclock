@@ -77,15 +77,14 @@ body.night-mode .clock-layer {
   transition: none;
 }
 
-/* Sweep Leading Bar */
+/* Sweep Leading Bar with Directional Motion Blur */
 #sweep-bar {
   position: absolute;
   z-index: 10;
-  background-color: #ffffff;
   pointer-events: none;
   opacity: 0;
-  box-shadow: 0 0 10px #ffffff, 0 0 3px #ffffff;
   transition: none;
+  will-change: left, top, width, height, background, box-shadow;
 }
 
 /* Clock Content Box */
@@ -258,14 +257,16 @@ body.night-mode .clock-layer {
   color: #fff;
 }
 
-/* Debug Monitor Panel */
+/* Debug Monitor Panel - Top Left */
 .debug-panel {
   position: fixed;
   top: 20px;
-  right: 20px;
+  left: 20px;
   z-index: 200;
-  width: 350px;
-  background: rgba(12, 14, 22, 0.92);
+  width: 360px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  background: rgba(12, 14, 22, 0.94);
   backdrop-filter: blur(16px);
   border: 1px solid rgba(0, 229, 163, 0.45);
   border-radius: 16px;

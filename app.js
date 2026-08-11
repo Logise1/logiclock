@@ -288,7 +288,9 @@ document.addEventListener('DOMContentLoaded', () => {
           top: '0px',
           left: `calc(${p}% - 1.5px)`,
           width: '3px',
-          height: '100%'
+          height: '100%',
+          background: '#ffffff',
+          boxShadow: '-4px 0 12px #ffffff, 0 0 4px #ffffff, 0 0 10px rgba(255,255,255,0.8)'
         };
       } else if (dir === 1) {
         // Top to Bottom (0% to 100%)
@@ -298,7 +300,9 @@ document.addEventListener('DOMContentLoaded', () => {
           top: `calc(${p}% - 1.5px)`,
           left: '0px',
           width: '100%',
-          height: '3px'
+          height: '3px',
+          background: '#ffffff',
+          boxShadow: '0 -4px 12px #ffffff, 0 0 4px #ffffff, 0 0 10px rgba(255,255,255,0.8)'
         };
       } else if (dir === 2) {
         // Right to Left (100% to 0%)
@@ -308,7 +312,9 @@ document.addEventListener('DOMContentLoaded', () => {
           top: '0px',
           left: `calc(${p}% - 1.5px)`,
           width: '3px',
-          height: '100%'
+          height: '100%',
+          background: '#ffffff',
+          boxShadow: '4px 0 12px #ffffff, 0 0 4px #ffffff, 0 0 10px rgba(255,255,255,0.8)'
         };
       } else if (dir === 3) {
         // Bottom to Top (100% to 0%)
@@ -318,7 +324,9 @@ document.addEventListener('DOMContentLoaded', () => {
           top: `calc(${p}% - 1.5px)`,
           left: '0px',
           width: '100%',
-          height: '3px'
+          height: '3px',
+          background: '#ffffff',
+          boxShadow: '0 4px 12px #ffffff, 0 0 4px #ffffff, 0 0 10px rgba(255,255,255,0.8)'
         };
       }
 
@@ -540,14 +548,6 @@ document.addEventListener('DOMContentLoaded', () => {
       checkAndPreloadNextVideoClip();
     }
 
-    // Align audio currentTime to second of minute if drift exceeds 1.5s
-    if (audio && audio.duration && !isNaN(audio.duration) && !audio.paused && currentPhase !== 'HOUR_VIDEO') {
-      const targetAudioTime = (seconds + (effNow.getMilliseconds() / 1000)) % audio.duration;
-      if (Math.abs(audio.currentTime - targetAudioTime) > 1.5) {
-        audio.currentTime = targetAudioTime;
-      }
-    }
-
     // Minute 00 Special 30s Hour Fanfare Animation (00:00 to 00:29)
     // Plays EXCLUSIVELY the 30s special hour video, no dance clips!
     if (minute === 0 && seconds < 30) {
@@ -573,12 +573,46 @@ document.addEventListener('DOMContentLoaded', () => {
         switchPhase('VIDEO');
       }
     }
+    // --- Audio Drift Fallback Sync (Cross-Browser Safe) ---
+    // Since math is exact now, audio naturally stays in sync.
+    // We only hard-seek if system sleep or heavy lag causes > 1.5s drift.
+    if (audio && !audio.paused && audio.duration && !isNaN(audio.duration) && currentPhase !== 'HOUR_VIDEO' && !isBufferingNetwork) {
+      const targetAudioTime = (seconds + (effNow.getMilliseconds() / 1000)) % audio.duration;
+      let drift = targetAudioTime - audio.currentTime;
+
+      if (drift > audio.duration / 2) drift -= audio.duration;
+      if (drift < -audio.duration / 2) drift += audio.duration;
+
+      if (Math.abs(drift) > 3.0) {
+        audio.currentTime = targetAudioTime;
+      }
+      if (audio.playbackRate !== 1.0) audio.playbackRate = 1.0;
+    }
   }
 
-  // --- High-Precision Millisecond-Accurate Master RAF Engine ---
+  // --- High-Precision Millisecond-Accurate Master RAF Engine & Performance Monitor ---
   let lastEvaluatedSecond = -1;
+  let lastFrameTime = performance.now();
+  let frameCount = 0;
+  let fpsLastCalc = performance.now();
+  let currentFps = 60;
+  let currentFrameDeltaMs = 16.6;
+  const fpsHistory = new Array(40).fill(60);
 
   function masterFrameLoop() {
+    const nowMs = performance.now();
+    currentFrameDeltaMs = nowMs - lastFrameTime;
+    lastFrameTime = nowMs;
+
+    frameCount++;
+    if (nowMs - fpsLastCalc >= 250) {
+      currentFps = (frameCount * 1000) / (nowMs - fpsLastCalc);
+      frameCount = 0;
+      fpsLastCalc = nowMs;
+      fpsHistory.push(currentFps);
+      if (fpsHistory.length > 40) fpsHistory.shift();
+    }
+
     const effNow = getEffectiveDate();
     const currentSec = effNow.getSeconds();
 
@@ -698,10 +732,98 @@ document.addEventListener('DOMContentLoaded', () => {
     const dirs = ['Left->Right', 'Top->Bottom', 'Right->Left', 'Bottom->Top'];
     const dbgSweepDir = document.getElementById('dbg-sweep-dir');
     if (dbgSweepDir) dbgSweepDir.textContent = `${dirs[(sweepDirectionIndex - 1 + 4) % 4]} (#${sweepDirectionIndex})`;
+
+    // --- Graphics & Performance Metrics ---
+    const dbgFps = document.getElementById('dbg-fps');
+    if (dbgFps) {
+      const fpsVal = currentFps.toFixed(1);
+      dbgFps.textContent = `${fpsVal} FPS`;
+      dbgFps.style.color = currentFps >= 55 ? '#00ff88' : (currentFps >= 30 ? '#ffcc00' : '#ff4444');
+    }
+
+    const dbgFrameTime = document.getElementById('dbg-frame-time');
+    if (dbgFrameTime) {
+      dbgFrameTime.textContent = `${currentFrameDeltaMs.toFixed(1)} ms`;
+    }
+
+    // Dynamic Max FPS Detection for 60Hz, 120Hz, 144Hz, 240Hz, 360Hz monitors
+    const maxObservedFps = Math.max(60, ...fpsHistory);
+    let targetMaxScale = 75;
+    let hzLabel = '60 Hz';
+
+    if (maxObservedFps > 280) {
+      targetMaxScale = 380;
+      hzLabel = '~360 Hz';
+    } else if (maxObservedFps > 180) {
+      targetMaxScale = 260;
+      hzLabel = '~240 Hz';
+    } else if (maxObservedFps > 130) {
+      targetMaxScale = 165;
+      hzLabel = '~144 Hz';
+    } else if (maxObservedFps > 90) {
+      targetMaxScale = 135;
+      hzLabel = '~120 Hz';
+    } else if (maxObservedFps > 70) {
+      targetMaxScale = 100;
+      hzLabel = '~90 Hz';
+    }
+
+    const dbgHz = document.getElementById('dbg-hz');
+    if (dbgHz) dbgHz.textContent = hzLabel;
+
+    const dbgRes = document.getElementById('dbg-res');
+    if (dbgRes) {
+      const dpr = window.devicePixelRatio || 1;
+      dbgRes.textContent = `${window.innerWidth}x${window.innerHeight} @ ${dpr.toFixed(2)}x DPR`;
+    }
+
+    const dbgMem = document.getElementById('dbg-mem');
+    if (dbgMem) {
+      if (performance && performance.memory) {
+        const used = (performance.memory.usedJSHeapSize / (1024 * 1024)).toFixed(1);
+        const total = (performance.memory.jsHeapSizeLimit / (1024 * 1024)).toFixed(0);
+        dbgMem.textContent = `${used} / ${total} MB`;
+      } else {
+        dbgMem.textContent = 'N/A';
+      }
+    }
+
+    // Render Canvas FPS Sparkline (Dynamically scaled to monitor refresh rate)
+    const fpsCanvas = document.getElementById('dbg-fps-canvas');
+    if (fpsCanvas && fpsCanvas.getContext) {
+      const ctx = fpsCanvas.getContext('2d');
+      const w = fpsCanvas.width;
+      const h = fpsCanvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      // Reference line at 60 FPS
+      const ref60Y = h - (Math.min(1, 60 / targetMaxScale) * h);
+      ctx.strokeStyle = 'rgba(0, 229, 163, 0.2)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, ref60Y);
+      ctx.lineTo(w, ref60Y);
+      ctx.stroke();
+
+      // Draw FPS Sparkline
+      const step = w / (fpsHistory.length - 1);
+      ctx.beginPath();
+      fpsHistory.forEach((val, idx) => {
+        const normalized = Math.max(0, Math.min(1, val / targetMaxScale));
+        const y = h - (normalized * h);
+        const x = idx * step;
+        if (idx === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+
+      ctx.strokeStyle = currentFps >= 55 ? '#00ff88' : '#ffcc00';
+      ctx.lineWidth = 1.8;
+      ctx.stroke();
+    }
   }
 
-  // Update debug panel every 200ms when visible
-  setInterval(updateDebugPanel, 200);
+  // Update debug panel every 150ms when visible
+  setInterval(updateDebugPanel, 150);
 
   function reSyncAllSystems() {
     currentPhase = 'IDLE'; // Reset active phase for clean state switch
